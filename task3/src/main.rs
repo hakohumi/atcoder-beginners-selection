@@ -11,27 +11,26 @@
 s1, s2 ,s3 は 1 あるいは 0
  */
 
- use std::io;
+use std::io;
 
- fn main() {
-    let result: String = "";
-     let line_1 = get_input(); // a b
- 
-    //  let line_1_split: Vec<&str> = line_1.split(" ").collect();
-    //  let a_num: u32 = line_1_split[0].parse().unwrap();
-    //  let b_num: u32 = line_1_split[1].parse().unwrap();
- 
+fn main() {
+    let line_1 = get_input(); // abc
 
-     println!("{}", result);
-   }
- 
- fn check_even(value: u32) -> bool{
-   (value % 2) == 0
- }
- 
- fn get_input() -> String {
-     let mut word = String::new();
-     io::stdin().read_line(&mut word).ok();
-     let answer = word.trim().to_string();
-     return answer;
- }
+    let count = line_1.chars().fold(0, |mut a, b| {
+        if b == '1' {
+            a += 1
+        };
+        a
+    });
+
+    let result: String = count.to_string();
+
+    println!("{}", result);
+}
+
+fn get_input() -> String {
+    let mut word = String::new();
+    io::stdin().read_line(&mut word).ok();
+    let answer = word.trim().to_string();
+    return answer;
+}
