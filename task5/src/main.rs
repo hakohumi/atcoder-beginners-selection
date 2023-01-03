@@ -8,7 +8,7 @@
 同じ種類の硬貨どうしは区別できません。2 通りの硬貨の選び方は、ある種類の硬貨についてその硬貨を選ぶ枚数が異なるとき区別されます。
  */
 
-use std::{io, result};
+use std::io;
 
 #[derive(Debug)]
 struct ResultData {
@@ -32,43 +32,90 @@ fn main() {
     let C: i32 = line_3.parse().unwrap();
     let X: i32 = line_4.parse().unwrap();
 
-    let limits = vec![A, B, C];
+    let coin500 = CoinsInfo {
+        kind: 500,
+        limit: A,
+    };
+    let coin100 = CoinsInfo {
+        kind: 100,
+        limit: B,
+    };
+    let coin50 = CoinsInfo { kind: 50, limit: C };
 
-    let kinds: Vec<CoinsInfo> = vec![
-        CoinsInfo {
-            kind: 500,
-            limit: A,
-        },
-        CoinsInfo {
-            kind: 100,
-            limit: B,
-        },
-        CoinsInfo { kind: 50, limit: C },
-    ];
+    let coinsinfo_combine = three_kaijou_to_list(&coin500, &coin100, &coin50);
 
-    let a = check_one_process(kinds, X);
-    // a.iter().filter(|result|{
-    //     result.check_limit(A);
-    // }).collect();
-    // let b = a.check_limit(A).check_limit(B).check_limit(C);
+    use std::collections::HashSet;
+    let mut result_list: Vec<ResultStruct> = Vec::new();
 
-    println!("{:?}", a);
+    for item in coinsinfo_combine {
+        let a = check_one_process(item, X);
+        if a.is_some() {
+            // println!("a = {:?}", a);
+            result_list.push(a.unwrap());
+        }
+    }
+    let b: HashSet<&ResultStruct> = HashSet::from_iter(result_list.iter());
+    println!("b = {:?}", b);
 }
 
-// fn processB(kinds: Vec<CoinsInfo>,  mut total: i32){
-
-//     let a = check_one_process(kinds, X);
-//     // let b = a.check_limit(A).check_limit(B).check_limit(C);
-
-// }
-
 // 1次元配列の要素の組み合わせから2次元配列を作成する
-fn to_combinate<T>(list: Vec<T>) -> Vec<Vec<T>>{
+fn to_combinate<T>(list: Vec<T>) -> Vec<Vec<T>> {
     let ret: Vec<Vec<T>> = Vec::new();
 
-    
+    // let b = three_kaijou_to_list(A, B, C);
 
     ret
+}
+
+// 3の階乗のリストを作成する
+// in
+// A, B, C
+// out
+// [[A, B, C], [A, C, B], [B, A, C], [B, C, A], [C, A, B], [C, B, A]]
+fn three_kaijou_to_list<'a, T>(a: &'a T, b: &'a T, c: &'a T) -> Vec<Vec<&'a T>> {
+    fn process<'a, T>(
+        root: &'a T,
+        branch_1: &'a T,
+        branch_2: &'a T,
+    ) -> ((&'a T, &'a T, &'a T), (&'a T, &'a T, &'a T)) {
+        let (two_tuple1, two_tuple2) = two_kaijo_to_list(branch_1, branch_2);
+        let result_list = (
+            (root, two_tuple1.0, two_tuple1.1),
+            (root, two_tuple2.0, two_tuple2.1),
+        );
+        result_list
+    }
+
+    let (result1_list1, result1_list2) = process(a, b, c);
+    let (result2_list1, result2_list2) = process(b, a, c);
+    let (result3_list1, result3_list2) = process(c, a, b);
+
+    let a = vec![
+        result1_list1,
+        result1_list2,
+        result2_list1,
+        result2_list2,
+        result3_list1,
+        result3_list2,
+    ];
+
+    let b = a
+        .iter()
+        .map(|&item| vec![item.0, item.1, item.2])
+        .collect::<Vec<Vec<&T>>>();
+
+    let result: Vec<Vec<&T>> = b;
+
+    result
+}
+
+// 2の階乗のリストを作成する
+// in
+// A, B
+// out
+// [(A, B), (B, A)]
+fn two_kaijo_to_list<'a, T>(a: &'a T, b: &'a T) -> ((&'a T, &'a T), (&'a T, &'a T)) {
+    ((a, b), (b, a))
 }
 
 trait MyFunc {
@@ -83,34 +130,58 @@ impl MyFunc for Vec<ResultData> {
     }
 }
 
-fn check_one_process(coins: Vec<CoinsInfo>, mut total: i32) -> Vec<ResultData> {
-    let mut _total = total;
-    let mut result_data_list: Vec<ResultData> = Vec::new();
-    let a = coins.iter().fold(_total, |mut acc, coin| {
-        let (ret, _total) = check_div(coin.kind, coin.limit, acc);
-        acc = _total;
-        println!("map {:?}, total {}", ret, acc);
-        result_data_list.push(ret);
-        acc
-    });
-    println!("a {:?}, result_data_list {:?}", a, result_data_list);
-    result_data_list
+#[derive(Debug, Hash, Eq, PartialEq)]
+struct ResultStruct {
+    coin500_num: i32,
+    coin100_num: i32,
+    coin50_num: i32,
 }
 
-// 硬貨と金額を指定する
-// 割ったあとの金額と枚数を出力する
-fn check_div(kind: i32, limit: i32, total: i32) -> (ResultData, i32) {
-    let mut _total = total;
-    let mut num = 0;
-    for i in 0..limit {
-        if _total < kind {
-            return (ResultData { kind, num }, _total);
+fn check_one_process(coins: Vec<&CoinsInfo>, total: i32) -> Option<ResultStruct> {
+    // 硬貨と金額を指定する
+    // 割ったあとの金額と枚数を出力する
+    fn check_div(kind: i32, limit: i32, total: i32) -> (i32, i32) {
+        let mut _total = total;
+        let mut num = 0;
+        for _ in 0..limit {
+            if _total < kind {
+                return (num, _total);
+            }
+            _total -= kind;
+            num += 1;
         }
-        _total -= kind;
-        num += 1;
+
+        return (num, _total);
     }
 
-    return (ResultData { kind, num }, _total);
+    let mut _total = total;
+    let (mut coin500_num, mut coin100_num, mut coin50_num) = (0, 0, 0);
+
+    let remaining_total = coins.iter().fold(_total, |mut acc, coin| {
+        let (div_num, _total) = check_div(coin.kind, coin.limit, acc);
+
+        match coin.kind {
+            500 => coin500_num += div_num,
+            100 => coin100_num += div_num,
+            50 => coin50_num += div_num,
+            _ => (),
+        };
+
+        acc = _total;
+        acc
+    });
+
+    let result_struct: ResultStruct = ResultStruct {
+        coin500_num,
+        coin100_num,
+        coin50_num,
+    };
+
+    if remaining_total != 0 {
+        return None;
+    }
+
+    Some(result_struct)
 }
 
 fn check_all_even(items: &Vec<u64>) -> bool {
